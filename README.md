@@ -1,36 +1,33 @@
 k-enchen
 ========
-A Python-based distributed computing application (server+client). 
+A Python-based distributed computing application (server+client), to run simulation studies. 
 Originally made as part of #cee505
 
-Problem statement
+Simulation studies require many simulation instances of similar problems, differing through a series of parameters.  These parameters are typically given as fixed set of parameters (not applicable here) or as random variables with mean value and standard variation.  Given multiple available computers, this client-server tool helps to parallelize and thus speed up the computations. The system does not assign the same problem twice, and the analysis stops when complete.
+
+Part 1: Server Application (Runs on a web server)
 ========
-Problem:  Your research requires many simulations of similar problems, differing through a series of parameters.  These parameters are typically given as fixed set of parameters (2-person option) or as random variables with mean value and standard variation (3-people project).  Since multiple computers are available, you decide to create a client-server tool that helps you to parallelize and thus speed up your computations.
-Part 1: Server tool (will run on a web server)
 Setup stage1: generate a database holding values for various parameters
 Setup stage2: generate a combination table that defines loadcases and parameter IDs for parameters used in the analysis.
 Generate a request function that responds to a HTTP-request: http://server_name/GetProblem.py?UID=uid?JOB=new by returning “{‘jobID’:jid, ‘param1’:val1, ‘param2’:val2, … }” through the web interface (visible in browser)
-Keep track of which user works on what combination (through the database). Generate a new user if uid is not yet known.  Also keep track when a job was assigned and have the problem expire/reset if no solution is submitted within a given time (1 minute)
-Generate a request function that responds to a HTTP request: http://server_name/SubmitAnswer.py?UID=uid?JOB=jid?result=val that
-Checks for valid uid and active jid
-Registers the result and stores it within the combinations table (SQL UPDATE statement)
-Marks the problem as completed
-Returns ‘TRUE’ if action was successful and ‘FALSE’ if a problem was encounters. Add proper description of the problem in a separate line of output (will be displayed over the HTTP connection.
-Generate a request function that responds to a HTTP request (3-people team only): http://server_name/CheckResult.py that shows:
-a distribution graph for the submitted values (density function)
-presents mean, std dev, and COV for the computed results. 
-Lists all contributing users and how many computations they submitted.
-Part 2: Client Application (will run on multiple computers)
-Obtain a new set of input parameters by submitting the following request via a HTTP connection (check out the url feature in python): http://server_name/GetProblem.py?UID=uid?JOB=new where uid is your personal ID.  I suggest using your student ID or your nickname.  ‘new’ is a keyword.  The server will return a single line in the form “{‘jobID’:jid, ‘param1’:val1, ‘param2’:val2, … }” through the web interface (visible in a browser if you type the request).  Note that this string represents a dictionary and can be converted easily.
-Use these parameters to solve a neat problem.  Just for the fun of it, let’s iteratively solve and return X through a HTTP request: http://server_name/SubmitAnswer.py?UID=uid?JOB=jid?result=X The server will return
-‘TRUE’ if action was successful and
-‘FALSE’ if a problem was encounters. Add proper description of the problem in a separate line of output (will be displayed over the HTTP connection. 
-Deliverables:
-Fully functional code
-Full documentation of all algorithms and implementation issues
-Live demonstration of the System using at least 3 client computers simultaneously (I want to see that the system does not assign the same problem, and that the analysis stops when complete)
+Keep track of which user works on what combination (through the database). Generate a new user if uid is not yet known.  Also keep track when a job was assigned and have the problem expire/reset if no solution is submitted within a given time (1 minute). Generate a request function that responds to a HTTP request: http://server_name/SubmitAnswer.py?UID=uid?JOB=jid?result=val that 
+- Checks for valid uid and active jid
+- Registers the result and stores it within the combinations table (SQL UPDATE statement)
+- Marks the problem as completed
+- Returns ‘TRUE’ if action was successful and ‘FALSE’ if a problem was encounters. Add proper description of the problem in a separate line of output (will be displayed over the HTTP connection.
+- Generate a request function that responds to a HTTP request (3-people team only): http://server_name/CheckResult.py that shows:
+- a distribution graph for the submitted values (density function)
+- presents mean, std dev, and COV for the computed results. 
+- Lists all contributing users and how many computations they submitted.
 
-DATA: 
+Part 2: Client Application (runs on multiple computers)
+========
+Obtain a new set of input parameters by submitting the following request via a HTTP connection (check out the url feature in python): http://server_name/GetProblem.py?UID=uid?JOB=new where uid is your personal ID.  I suggest using your student ID or your nickname.  ‘new’ is a keyword.  The server will return a single line in the form “{‘jobID’:jid, ‘param1’:val1, ‘param2’:val2, … }” through the web interface (visible in a browser if you type the request).  Note that this string represents a dictionary and can be converted easily.
+Use these parameters to solve a problem: iteratively solve and return X through a HTTP request: http://server_name/SubmitAnswer.py?UID=uid?JOB=jid?result=X The server will return ‘TRUE’ if action was successful and
+‘FALSE’ if a problem was encounters. Add proper description of the problem in a separate line of output (will be displayed over the HTTP connection. 
+
+Example data
+========
 PARAMETER, MEAN, STD DEV
 param1 5 1
 param2 2 .25
@@ -38,10 +35,9 @@ param3 -2 .75
 param4 .5 .1
 param5 1.234 .321
  
-
 Database design
 ========
-Our database consists of six tables. A unique id is added for ‘joblist’, ‘parameter’, ‘user’, ‘problemstatus’, and ‘result’. The id serves as the primary key for each table and connects the tables across the database (as shown in the diagram above).
+The database consists of six tables. A unique id is added for ‘joblist’, ‘parameter’, ‘user’, ‘problemstatus’, and ‘result’. The id serves as the primary key for each table and connects the tables across the database (as shown in the diagram above).
 
 The FLOAT type was applied to columns containing parameter values and submitted answers. Both of these can be decimal numbers. INT type was used for other columns containing system ids.
 We chose TINYTEXT instead of other text options to save memory space. The ‘user’ (user defined through input) and ‘problemstatus’ (unsolved, solved, unsolvable) are both expected to be shorter than 255 characters.
@@ -62,7 +58,7 @@ Finall, the table ‘result’ is composed of two columns: id and answer. Both a
 Algorithm
 ========
 create_database.py
-‘create_database.py’ generates our database file. It constructs all the tables we need, generates a predefined amount of sets of random parameter values and stores them. The number of sets generated is specified at the end of create_database.py
+‘create_database.py’ generates the database file. It constructs all the tables needed, generates a predefined amount of sets of random parameter values and stores them. The number of sets generated is specified at the end of create_database.py
 
 To work, create_database needs to import SQLite3 and numpy. The SQLite3 package is needed to build tables and insert parameter data. Numpy is required to generate random parameter values. Each table is generated by three basic SQLite3 code:
 • DROP - delete the table if it already exists
@@ -71,8 +67,8 @@ To work, create_database needs to import SQLite3 and numpy. The SQLite3 package 
 There are two functions defined in this python file.  
 The first function is  create_database().  This master function will create all the tables we need and insert some default values.
 The second function is update_parameters ().  In this function generates several sets of new parameters and inserts this data into the parameter table in the database. 
-client.py
 
+client.py
 This file should be executed on each client machine that participates in the computation. It will repeatedly call the main() function to solve each given problem until the server tells it there are no problems left to solve.
 
 main() function
@@ -80,7 +76,6 @@ There is a main() function in this file, which coordinates all of the client’s
 The interaction between client and server is done with features from the urlib and urlib2 package.  Using a try statement, we can handle different types of error when trying to connect to the server. After sending a username to the server, we received a bunch of information in string type back from server. In this long string, we look for a specific keyword to get parameterid, userid and our five assigned parameters. Those are then stored in local variables. After that we call the solve_problem() function to compute the result. The type of result returned by solve_problem() function can vary. If it cannot solve the problem, it returns a NaN or string type. If it solved the problem, it returns a float number. This information will be passed to the server and the server will handle it accordingly.  The server may change the status of the problem from ‘unsolved’ to either ‘unsolvable’ or ‘solved’ in the database.
 
 solve_problem() function
- 
 The function ‘solve_problem’ finds the solution from the five given parameters. It does this by implementing the Newton-Raphson method. However, it is possible to get answers out of the problem’s boundaries (0≤x<2π). If we get an out of boundary solution,  we consider the problem as ‘unsolvable’ and return this info as a string to the server. 
 job_manager.py
 
@@ -151,4 +146,3 @@ After the server is set up, each client user should modify the url and url2 vari
 
 Starting the code
 Users can begin their work simply by running client.py on their machine. The program will keep requesting problems from the server until there are no problems left to be solved on the server’s database.
-
